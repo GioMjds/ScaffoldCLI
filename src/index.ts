@@ -4,70 +4,65 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { execSync } from 'child_process';
+import { templates } from './constants/templates';
 import * as fs from 'fs';
 import * as path from 'path';
-
-interface TemplateConfig {
-	name: string;
-	repo: string;
-}
-
-interface Templates {
-	[key: string]: TemplateConfig;
-}
+import { morning } from 'gradient-string';
+import figlet from 'figlet';
+import { Spinner } from 'cli-spinner';
+import boxen from 'boxen';
 
 const program = new Command();
 const log = console.log;
 
-const templates: Templates = {
-    'pern-stack': {
-        name: 'PERN Stack (PostgreSQL, Express, React, Node.js)',
-        repo: 'https://github.com/GioMjds/pern-stack-template.git',
-    },
-	'react-flask': {
-		name: 'React + Flask',
-		repo: 'https://github.com/GioMjds/react-flask-template.git',
-	},
-	'react-tanstack-router-django': {
-		name: 'React (TanStack Router) + Django',
-		repo: 'https://github.com/GioMjds/react-django-template.git',
-	},
-	'react-tanstack-router-fastapi': {
-		name: 'React (TanStack Router) + FastAPI',
-		repo: 'https://github.com/GioMjds/react-fastapi-template.git',
-	},
-	nextjs: {
-		name: 'Next.js 15 App Router + API Routes',
-		repo: 'https://github.com/GioMjds/nextjs-project-template.git',
-	},
+const showWelcome = () => {
+	console.clear();
+	log(morning('\n' + figlet.textSync('Scaffold CLI', {
+			font: 'Small',
+			horizontalLayout: 'default',
+		}))
+	);
+
+	log(boxen(chalk.blueBright('🚀 Supercharge your development with premium templates!'), {
+		padding: 1,
+		margin: 1,
+		borderStyle: 'round',
+		borderColor: 'cyan',
+	}));
 };
 
 program
 	.name('giomjds-template-cli')
-	.description('CLI to create projects from GioMjds\'s predefined templates')
-	.version('1.2.7');
+	.description("CLI to create projects from GioMjds's predefined templates")
+	.version('1.2.8');
 
 program
 	.command('create')
 	.description('Create a new project from available project templates')
 	.action(async () => {
 		try {
-			log(chalk.blue('🚀 Welcome to Project Template CLI!\n'));
+			showWelcome();
 
+			// Create a stylish prompt for template selection
 			const templateAnswer = await inquirer.prompt<{ template: string }>([
 				{
 					type: 'list',
 					name: 'template',
-					message: 'What template would you like to use?',
+					message: chalk.hex('#FFA500')(
+						'📁 What template would you like to use?'
+					),
 					choices: Object.entries(templates).map(([key, value]) => ({
-						name: value.name,
+						name: chalk.hex('#4FD6D9')(`📁 ${value.name}`),
 						value: key,
+						short: chalk.green(value.name),
 					})),
+					pageSize: 10,
+					loop: false,
 				},
 			]);
 
 			const selectedTemplate = templates[templateAnswer.template];
-			log(chalk.green(`✨ Selected: ${selectedTemplate.name}\n`));
+			log(chalk.hex('#FF6B6B')(`\n✨ Selected: ${chalk.bold(selectedTemplate.name)}\n`));
 
 			const projectAnswer = await inquirer.prompt<{
 				projectName: string;
@@ -75,23 +70,22 @@ program
 				{
 					type: 'input',
 					name: 'projectName',
-					message: 'What is your project named?',
+					message: chalk.hex('#FFA500')('💼 What is your project named?'),
 					default: 'my-app',
 					validate: (input: string) => {
 						const trimmed = input.trim();
-						if (!trimmed) {
-							return 'Project name cannot be empty';
-						}
-						if (trimmed === '.' || trimmed === './') {
-							return true;
-						}
+						if (!trimmed) return chalk.red('❌ Project name cannot be empty');
+						if (trimmed === '.' || trimmed === './') return true;
 						if (fs.existsSync(trimmed)) {
-							return `Directory '${trimmed}' already exists!`;
+							return chalk.red(`❌ Directory '${trimmed}' already exists!`);
 						}
 						if (!/^[a-zA-Z0-9._/-]+$/.test(trimmed)) {
-							return 'Project name contains invalid characters';
+							return chalk.red('❌ Project name contains invalid characters');
 						}
 						return true;
+					},
+					transformer: (input: string) => {
+						return chalk.hex('#4FD6D9')(input);
 					},
 				},
 			]);
@@ -110,7 +104,7 @@ program
 						{
 							type: 'confirm',
 							name: 'confirm',
-							message: 'Current directory is not empty. Continue anyway?',
+							message: chalk.yellow('⚠️  Current directory is not empty. Continue anyway?'),
 							default: false,
 						},
 					]);
@@ -123,12 +117,14 @@ program
 
 			const displayName = isCurrentDir
 				? 'current directory'
-				: `"${projectName}"`;
+				: `"${chalk.cyan(projectName)}"`;
+
+			// Create a styled confirmation prompt
 			const confirmAnswer = await inquirer.prompt<{ confirm: boolean }>([
 				{
 					type: 'confirm',
 					name: 'confirm',
-					message: `Create project in ${displayName} with ${selectedTemplate.name}?`,
+					message: chalk.hex('#FFA500')(`Create project in ${displayName} with ${chalk.bold(selectedTemplate.name)}?`),
 					default: true,
 				},
 			]);
@@ -138,56 +134,86 @@ program
 				return;
 			}
 
-			log(chalk.blue(`\n📦 Cloning ${selectedTemplate.name}...`));
+			const spinner = new Spinner(
+				chalk.blue('%s 📦 Cloning template...')
+			);
+			spinner.setSpinnerString(18);
+			spinner.start();
 
-			if (isCurrentDir) {
-				const tempDir = `temp-${Date.now()}`;
-				execSync(`git clone ${selectedTemplate.repo} ${tempDir}`, {
-					stdio: 'inherit',
-				});
+			try {
+				if (isCurrentDir) {
+					const tempDir = `temp-${Date.now()}`;
+					execSync(`git clone ${selectedTemplate.repo} ${tempDir}`, {
+						stdio: 'ignore',
+					});
 
-				const tempPath = path.resolve(tempDir);
-				const files = fs.readdirSync(tempPath);
+					const tempPath = path.resolve(tempDir);
+					const files = fs.readdirSync(tempPath);
 
-				log(chalk.blue('📁 Moving files to current directory...'));
-				files.forEach((file) => {
-					const srcPath = path.join(tempPath, file);
-					const destPath = path.join('.', file);
-					fs.renameSync(srcPath, destPath);
-				});
+					spinner.setSpinnerTitle(
+						chalk.blue('%s 📁 Moving files to current directory...')
+					);
 
-				fs.rmSync(tempPath, { recursive: true, force: true });
+					files.forEach((file) => {
+						const srcPath = path.join(tempPath, file);
+						const destPath = path.join('.', file);
+						fs.renameSync(srcPath, destPath);
+					});
 
-				const gitPath = path.join('.', '.git');
-				if (fs.existsSync(gitPath)) {
-					log(chalk.blue('🧹 Cleaning up git history...'));
-					fs.rmSync(gitPath, { recursive: true, force: true });
+					fs.rmSync(tempPath, { recursive: true, force: true });
+
+					const gitPath = path.join('.', '.git');
+					if (fs.existsSync(gitPath)) {
+						spinner.setSpinnerTitle(
+							chalk.blue('%s 🧹 Cleaning up git history...')
+						);
+						fs.rmSync(gitPath, { recursive: true, force: true });
+					}
+
+					spinner.setSpinnerTitle(
+						chalk.blue('%s 🔧 Initializing new git repository...')
+					);
+					execSync('git init', { stdio: 'ignore' });
+				} else {
+					execSync(`git clone ${selectedTemplate.repo} ${projectName}`, {
+						stdio: 'ignore',
+					});
+
+					const gitPath = path.join(projectName, '.git');
+					if (fs.existsSync(gitPath)) {
+						spinner.setSpinnerTitle(chalk.blue('%s 🧹 Cleaning up git history...'));
+						fs.rmSync(gitPath, { recursive: true, force: true });
+					}
+
+					spinner.setSpinnerTitle(
+						chalk.blue('%s 🔧 Initializing new git repository...')
+					);
+					execSync('git init', { cwd: projectName, stdio: 'ignore' });
 				}
 
-				log(chalk.blue('🔧 Initializing new git repository...'));
-				execSync('git init', { stdio: 'inherit' });
-			} else {
-				execSync(`git clone ${selectedTemplate.repo} ${projectName}`, {
-					stdio: 'inherit',
-				});
+				spinner.stop(true);
 
-				const gitPath = path.join(projectName, '.git');
-				if (fs.existsSync(gitPath)) {
-					log(chalk.blue('🧹 Cleaning up git history...'));
-					fs.rmSync(gitPath, { recursive: true, force: true });
-				}
+				log(chalk.green('\n✅ Project created successfully!'));
+				log(boxen(chalk.cyan(`📁 Next steps:\n\n`) +
+					(!isCurrentDir
+						? chalk.cyan(`   cd ${projectName}\n`)
+						: '') +
+					chalk.cyan(`   npm install\n`) +
+					chalk.cyan(`   📖 Check the README.md for setup instructions`),
+					{
+						padding: 1,
+						margin: 1,
+						borderStyle: 'round',
+						borderColor: 'green',
+						backgroundColor: '#222',
+					}
+				));
 
-				log(chalk.blue('🔧 Initializing new git repository...'));
-				execSync('git init', { cwd: projectName, stdio: 'inherit' });
+				log(chalk.hex('#FFA500')('\n🎉 Happy coding!'));
+			} catch (error) {
+				spinner.stop(true);
+				throw error;
 			}
-
-			log(chalk.green(`\n✅ Project created successfully!`));
-			log(chalk.cyan(`\n📁 Next steps:`));
-
-			if (!isCurrentDir) {
-				log(chalk.cyan(`   cd ${projectName}`));
-			}
-			log(chalk.cyan(`   📖 Check the README.md for setup instructions`));
 		} catch (error) {
 			log(chalk.red('❌ Error creating project:'), error);
 		}
@@ -197,11 +223,29 @@ program
 	.command('list')
 	.description('List available project templates')
 	.action(() => {
-		log(chalk.blue('📋 Available project templates:\n'));
+		showWelcome();
+
+		log(chalk.hex('#FFA500')('📋 Available project templates:\n'));
+
 		Object.entries(templates).forEach(([key, config]) => {
-			log(chalk.green(`• ${config.name}`));
-			log(chalk.gray(`  Repository: ${config.repo} \n`));
+			log(chalk.hex('#4FD6D9')(`📁 ${chalk.bold(config.name)}`));
+			log(chalk.gray(`   Repository: ${config.repo} \n`));
 		});
+
+		log(boxen(chalk.cyan('Run "scaffold create" to start a new project!'),
+			{
+				padding: 1,
+				margin: 1,
+				borderStyle: 'round',
+				borderColor: 'cyan',
+			}
+		));
 	});
+
+program.on('command:*', () => {
+	log(chalk.red('❌ Invalid command:'), program.args.join(' '));
+	log(chalk.cyan('See --help for a list of available commands.'));
+	process.exit(1);
+});
 
 program.parse();
