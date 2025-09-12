@@ -1,0 +1,32 @@
+{
+  "name": "giomjds-template-cli",
+  "version": "1.2.7",
+  "description": "CLI to scaffold projects from GioMjds project templates per stack",
+  "main": "dist/src/index.js",
+  "bin": {
+    "scaffold": "dist/src/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "watch": "nodemon --exec ts-node src/index.ts",
+    "prepublishOnly": "npm run build",
+    "scaffold": "npx giomjds-template-cli"
+    },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.0",
+    "inquirer": "^12.9.4"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^24.3.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
