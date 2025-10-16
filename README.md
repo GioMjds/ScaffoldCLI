@@ -20,8 +20,9 @@ scaffold list
 
 ## Available Templates
 
-- PERN Stack (PostgreSQL, Express.js, React, Node.js)
 - React + Flask
 - React (TanStack Router) + Django
 - React (TanStack Router) + FastAPI
+- MERN Stack (MongoDB, Express.js, React, Node.js)
+- PERN Stack (PostgreSQL, Express.js, React, Node.js)
 - Next.js 15 App Router + API Routes

@@ -43,7 +43,6 @@ program
 		try {
 			showWelcome();
 
-			// Create a stylish prompt for template selection
 			const templateAnswer = await inquirer.prompt<{ template: string }>([
 				{
 					type: 'list',
