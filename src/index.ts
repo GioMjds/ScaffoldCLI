@@ -34,7 +34,7 @@ const showWelcome = () => {
 program
 	.name('giomjds-template-cli')
 	.description("CLI to create projects from GioMjds's predefined templates")
-	.version('1.2.8');
+	.version('1.2.9');
 
 program
 	.command('create')
