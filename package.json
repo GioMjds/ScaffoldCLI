@@ -1,6 +1,6 @@
 {
   "name": "giomjds-template-cli",
-  "version": "1.2.9",
+  "version": "1.2.10",
   "description": "CLI to scaffold projects from GioMjds project templates per stack",
   "main": "dist/src/index.js",
   "bin": {
